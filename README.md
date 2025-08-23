@@ -1,207 +1,89 @@
-# KeyNginx CLI - Phase 1
+# KeyNginx CLI
 
-A simple SSL certificate generator CLI tool built with Go.
+🚀 **Automated SSL-enabled Nginx setup with Docker** - Generate certificates, configurations, and container orchestration in seconds.
 
-## Phase 1 Features
+## Quick Start
 
-- ✅ Generate RSA private keys (2048, 3072, 4096 bits)
-- ✅ Create self-signed SSL certificates
-- ✅ Support for localhost and custom domains
-- ✅ Configurable certificate validity period
-- ✅ Proper file permissions (600 for private keys)
-- ✅ Certificate validation and information display
+```bash
+# Initialize a new project
+keynginx init --domain myapp.local
+
+# Just generate certificates
+keynginx certs --domain localhost --out ./ssl
+
+# Interactive setup
+keynginx init --interactive
+```
+
+## What It Does
+
+KeyNginx automates the tedious process of setting up secure web servers by generating:
+
+- 🔐 **SSL Certificates** - Self-signed certificates for development
+- ⚙️ **Nginx Configuration** - Production-ready configs with security headers  
+- 🐳 **Docker Setup** - Complete container orchestration
+- 🛡️ **Security Headers** - HSTS, CSP, XSS protection, and more
+
+## Project Architecture
+
+```mermaid
+graph TD
+    A[keynginx init] --> B[Generate SSL Certs]
+    A --> C[Create Nginx Config]
+    A --> D[Generate Docker Compose]
+    A --> E[Save Project Config]
+    
+    B --> F[ssl/private.key]
+    B --> G[ssl/certificate.crt]
+    
+    C --> H[nginx.conf]
+    C --> I[Security Headers]
+    C --> J[Service Proxies]
+    
+    D --> K[docker-compose.yml]
+    D --> L[Container Networks]
+    
+    E --> M[keynginx.yaml]
+    
+    H --> N[🚀 Ready to Deploy]
+    K --> N
+    F --> N
+    G --> N
+```
 
 ## Installation
 
 ```bash
-# Clone repository
-git clone https://github.com/sinhaparth5/keynginx
+# Clone and build
+git clone <repo-url>
 cd keynginx
-
-# Build
 make build
 
 # Or install directly
 make install
 ```
 
-## Usage
+## Usage Examples
 
-### Generate certificates for localhost
-```bash
-keynginx certs --domain localhost --out ./ssl
-```
-
-### Generate certificates for custom domain
-```bash
-keynginx certs --domain myapp.local --out ./ssl --key-size 4096 --validity 730
-```
-
-### Verbose output with certificate details
-```bash
-keynginx certs --domain example.com --out ./certs --verbose
-```
-
-### Full example with all options
-```bash
-keynginx certs \
-  --domain myapp.local \
-  --out ./ssl \
-  --key-size 2048 \
-  --validity 365 \
-  --country US \
-  --state CA \
-  --city "San Francisco" \
-  --organization "My Company" \
-  --unit "IT Department" \
-  --email admin@myapp.local \
-  --overwrite \
-  --verbose
-```
-
-## Development
-
-```bash
-# Install dependencies
-make deps
-
-# Format code
-make fmt
-
-# Run tests
-make test
-
-# Build
-make build
-
-# Test certificate generation
-make test-certs
-```
-
-# KeyNginx CLI Makefile - Phase 2
-
-BINARY_NAME=keynginx
-VERSION?=1.0.0-phase2
-GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
-BUILD_TIME=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-LDFLAGS=-ldflags "-X github.com/yourusername/keynginx/cmd.Version=$(VERSION) -X github.com/yourusername/keynginx/cmd.GitCommit=$(GIT_COMMIT) -X github.com/yourusername/keynginx/cmd.BuildTime=$(BUILD_TIME)"
-
-BUILD_DIR=dist
-
-.PHONY: help build clean test fmt lint deps
-
-all: clean deps fmt test build
-
-help: ## Display help
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-15s\033[0m %s\n", $1, $2}' $(MAKEFILE_LIST)
-
-deps: ## Download dependencies
-	@echo "📦 Downloading dependencies..."
-	go mod download
-	go mod tidy
-
-fmt: ## Format code
-	@echo "🎨 Formatting code..."
-	go fmt ./...
-
-test: ## Run tests
-	@echo "🧪 Running tests..."
-	go test -v ./...
-
-build: clean fmt ## Build binary
-	@echo "🔨 Building $(BINARY_NAME) v$(VERSION)..."
-	@mkdir -p $(BUILD_DIR)
-	go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./main.go
-	@echo "✅ Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
-
-clean: ## Clean build directory
-	@echo "🧹 Cleaning..."
-	rm -rf $(BUILD_DIR)
-
-install: build ## Install to GOPATH/bin
-	@echo "📥 Installing..."
-	go install $(LDFLAGS) ./main.go
-
-# Test Phase 2 features
-test-init: build ## Test init command
-	@echo "🧪 Testing init command..."
-	./$(BUILD_DIR)/$(BINARY_NAME) init --domain test.local --output ./test-project --overwrite
-	@echo "✅ Test complete - check ./test-project/"
-
-test-interactive: build ## Test interactive mode
-	@echo "🧪 Testing interactive mode..."
-	@echo "localhost\nbalanced\nn\n" | ./$(BUILD_DIR)/$(BINARY_NAME) init --interactive --output ./test-interactive --overwrite
-
-test-services: build ## Test with services
-	@echo "🧪 Testing with services..."
-	./$(BUILD_DIR)/$(BINARY_NAME) init \
-		--domain api.local \
-		--output ./test-services \
-		--services "frontend:3000:/,backend:8000:/api" \
-		--custom-headers "X-API-Version:v2.0" \
-		--security-level strict \
-		--overwrite
-
-example: build ## Run example commands
-	@echo "📋 Running example commands..."
-	./$(BUILD_DIR)/$(BINARY_NAME) version
-	./$(BUILD_DIR)/$(BINARY_NAME) init --help
-	./$(BUILD_DIR)/$(BINARY_NAME) init --domain example.local --output ./example --overwrite
-
-.DEFAULT_GOAL := help
-```
-
-## 10. Updated README.md
-```markdown
-# KeyNginx CLI - Phase 2
-
-SSL certificate generator with Nginx configuration and Docker Compose generation.
-
-## Phase 2 Features
-
-- ✅ Generate RSA SSL certificates
-- ✅ Create complete Nginx configurations with security headers
-- ✅ Generate Docker Compose files
-- ✅ Interactive project setup
-- ✅ Service proxy configuration
-- ✅ Security levels (strict/balanced/permissive)
-- ✅ Project configuration management
-
-## Installation
-
-```bash
-# Install dependencies
-go mod download
-
-# Build
-make build
-```
-
-## Usage
-
-### Basic project initialization
+### Basic Project Setup
 ```bash
 keynginx init --domain myapp.local --output ./myapp
+cd myapp
+docker-compose up -d
 ```
 
-### Interactive mode
-```bash
-keynginx init --interactive
-```
-
-### Advanced configuration with services
+### Multi-Service Setup
 ```bash
 keynginx init \
   --domain api.local \
   --services "frontend:3000:/,backend:8000:/api" \
-  --custom-headers "X-API-Version:v2.0,X-Environment:dev" \
-  --security-level strict \
-  --output ./api-project
+  --custom-headers "X-API-Version:v2.0" \
+  --security-level strict
 ```
 
-### Just generate certificates (from Phase 1)
+### Certificate Generation Only
 ```bash
-keynginx certs --domain localhost --out ./ssl
+keynginx certs --domain localhost --key-size 4096 --validity 730
 ```
 
 ## Generated Project Structure
@@ -209,37 +91,131 @@ keynginx certs --domain localhost --out ./ssl
 ```
 myapp/
 ├── ssl/
-│   ├── private.key      # SSL private key
-│   └── certificate.crt  # SSL certificate
-├── nginx.conf           # Complete Nginx configuration
-├── docker-compose.yml   # Docker setup
-└── keynginx.yaml       # Project configuration
+│   ├── private.key         # 🔑 SSL private key  
+│   └── certificate.crt     # 📜 SSL certificate
+├── nginx.conf              # ⚙️ Nginx configuration
+├── docker-compose.yml      # 🐳 Container setup
+├── keynginx.yaml          # 💾 Project settings
+└── logs/                  # 📋 Nginx logs (created on run)
 ```
 
 ## Security Levels
 
-- **strict**: Maximum security headers, strict CSP, HSTS
-- **balanced**: Good security with compatibility (default)
-- **permissive**: Basic security headers only
+| Level | Description | Use Case |
+|-------|-------------|----------|
+| **strict** | Maximum security, strict CSP | Production APIs |
+| **balanced** | Good security + compatibility | Most web apps (default) |
+| **permissive** | Basic headers only | Legacy applications |
 
-## Testing
+## Features
+
+### 🔐 SSL Certificate Generation
+- RSA keys (2048, 3072, 4096 bits)
+- Self-signed certificates with SAN support
+- Localhost and custom domain support
+- Proper file permissions (600 for private keys)
+
+### ⚙️ Nginx Configuration  
+- HTTP to HTTPS redirect
+- Modern SSL/TLS configuration (TLS 1.2+)
+- Gzip compression
+- Security headers (HSTS, CSP, XSS protection)
+- Health check endpoints
+- Service reverse proxying
+
+### 🐳 Docker Integration
+- Multi-service container setup
+- Persistent SSL certificates
+- Log volume mounting
+- Custom networks
+- Ready-to-use compose files
+
+## Command Reference
 
 ```bash
-# Test all Phase 2 features
-make test-init
-make test-services
-make test-interactive
+# Project initialization
+keynginx init [flags]
+
+# Certificate generation  
+keynginx certs [flags]
+
+# Get version info
+keynginx version
+
+# Help for any command
+keynginx <command> --help
 ```
 
-## Next Phase
+### Key Flags
 
-**Phase 3**: Docker integration with container management commands
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--domain` | Domain name | `--domain api.local` |
+| `--services` | Service configs | `--services "app:3000:/,api:8000:/api"` |
+| `--security-level` | Security profile | `--security-level strict` |
+| `--interactive` | Interactive setup | `--interactive` |
+| `--custom-headers` | Custom headers | `--custom-headers "X-Version:2.0"` |
+
+## Workflow Diagram
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant KeyNginx
+    participant Docker
+    participant Browser
+    
+    User->>KeyNginx: keynginx init --domain myapp.local
+    KeyNginx->>KeyNginx: Generate SSL certificates
+    KeyNginx->>KeyNginx: Create nginx.conf with security headers
+    KeyNginx->>KeyNginx: Generate docker-compose.yml
+    KeyNginx-->>User: ✅ Project created
+    
+    User->>Docker: docker-compose up -d
+    Docker->>Docker: Start nginx container
+    Docker->>Docker: Mount SSL certs & config
+    Docker-->>User: 🚀 Server running
+    
+    User->>Browser: Visit https://localhost:8443
+    Browser->>Docker: HTTPS request
+    Docker-->>Browser: Secure response with headers
 ```
 
-This completes Phase 2 with full Nginx configuration generation, security headers, templates, and project initialization! 🎉
+## Development Status
 
-## Next Phases
+- ✅ **Phase 1**: Certificate generation
+- ✅ **Phase 2**: Nginx configuration & project initialization  
+- 🚧 **Phase 3**: Docker container management (coming soon)
+- 📋 **Phase 4**: Advanced features & polish
 
-- **Phase 3**: Docker integration
-- **Phase 4**: Advanced features and polish
+## Requirements
+
+- Go 1.21+
+- Docker (for running generated projects)
+
+## Contributing
+
+```bash
+# Setup development
+make setup-dev
+
+# Run tests  
+make test
+
+# Build and test
+make example
 ```
+
+## ⚠️ Important Notes
+
+- **Development Use Only**: Generated certificates are self-signed
+- **Production**: Use Let's Encrypt or proper CA certificates
+- **Browser Warnings**: Self-signed certs will show security warnings
+
+## License
+
+MIT License - see LICENSE file for details.
+
+---
+
+**Built with ❤️ in Go** | **Powered by Nginx & Docker**
