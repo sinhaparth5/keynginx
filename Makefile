@@ -1,20 +1,19 @@
-# KeyNginx CLI Makefile - Phase 1
+# KeyNginx CLI Makefile - Phase 2
 
 BINARY_NAME=keynginx
-VERSION?=1.0.0-phase1
+VERSION?=1.0.0-phase2
 GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
 BUILD_TIME=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-LDFLAGS=-ldflags "-X github.com/yourusername/keynginx/cmd.Version=$(VERSION) -X github.com/yourusername/keynginx/cmd.GitCommit=$(GIT_COMMIT) -X github.com/yourusername/keynginx/cmd.BuildTime=$(BUILD_TIME)"
+LDFLAGS=-ldflags "-X github.com/sinhaparth5/keynginx/cmd.Version=$(VERSION) -X github.com/sinhaparth5/keynginx/cmd.GitCommit=$(GIT_COMMIT) -X github.com/sinhaparth5/keynginx/cmd.BuildTime=$(BUILD_TIME)"
 
 BUILD_DIR=dist
 
 .PHONY: help build clean test fmt lint deps
 
-# Default target
 all: clean deps fmt test build
 
 help: ## Display help
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-15s\033[0m %s\n", $1, $2}' $(MAKEFILE_LIST)
 
 deps: ## Download dependencies
 	@echo "📦 Downloading dependencies..."
@@ -43,16 +42,30 @@ install: build ## Install to GOPATH/bin
 	@echo "📥 Installing..."
 	go install $(LDFLAGS) ./main.go
 
-# Test certificate generation
-test-certs: build ## Test certificate generation
-	@echo "🧪 Testing certificate generation..."
-	./$(BUILD_DIR)/$(BINARY_NAME) certs --domain test.local --out ./test-ssl --verbose
-	@echo "✅ Test complete - check ./test-ssl/"
+# Test Phase 2 features
+test-init: build ## Test init command
+	@echo "🧪 Testing init command..."
+	./$(BUILD_DIR)/$(BINARY_NAME) init --domain test.local --output ./test-project --overwrite
+	@echo "✅ Test complete - check ./test-project/"
+
+test-interactive: build ## Test interactive mode
+	@echo "🧪 Testing interactive mode..."
+	@echo "localhost\nbalanced\nn\n" | ./$(BUILD_DIR)/$(BINARY_NAME) init --interactive --output ./test-interactive --overwrite
+
+test-services: build ## Test with services
+	@echo "🧪 Testing with services..."
+	./$(BUILD_DIR)/$(BINARY_NAME) init \
+		--domain api.local \
+		--output ./test-services \
+		--services "frontend:3000:/,backend:8000:/api" \
+		--custom-headers "X-API-Version:v2.0" \
+		--security-level strict \
+		--overwrite
 
 example: build ## Run example commands
 	@echo "📋 Running example commands..."
 	./$(BUILD_DIR)/$(BINARY_NAME) version
-	./$(BUILD_DIR)/$(BINARY_NAME) certs --help
-	./$(BUILD_DIR)/$(BINARY_NAME) certs --domain localhost --out ./example-ssl --verbose --overwrite
+	./$(BUILD_DIR)/$(BINARY_NAME) init --help
+	./$(BUILD_DIR)/$(BINARY_NAME) init --domain example.local --output ./example --overwrite
 
 .DEFAULT_GOAL := help
