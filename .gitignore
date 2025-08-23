@@ -12,6 +12,7 @@
 *.out
 dist/
 ssl/
+keynginx-output/
 
 # Dependency directories (managed by Go modules)
 vendor/
