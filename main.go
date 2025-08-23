@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"github.com/sinhaparth5/keynginx/cmd"
+	"os"
 )
 
 func main() {
