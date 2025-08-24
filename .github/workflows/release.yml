@@ -1,0 +1,180 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y zip unzip
+
+    - name: Build binaries
+      run: |
+        export VERSION=${{ steps.version.outputs.VERSION }}
+        make build-all
+
+    - name: Create packages
+      run: |
+        export VERSION=${{ steps.version.outputs.VERSION }}
+        make package
+
+    - name: Generate release artifacts
+      run: |
+        export VERSION=${{ steps.version.outputs.VERSION }}
+        make release
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version.outputs.VERSION }}
+        release_name: KeyNginx ${{ steps.version.outputs.VERSION }}
+        body: |
+          ## KeyNginx ${{ steps.version.outputs.VERSION }}
+          
+          🚀 **Complete SSL-enabled Nginx automation**
+          
+          ### Download Options
+          
+          #### Windows
+          - **Windows 64-bit**: `keynginx-${{ steps.version.outputs.VERSION }}-windows-amd64.zip`
+          - **Windows 32-bit**: `keynginx-${{ steps.version.outputs.VERSION }}-windows-386.zip`
+          
+          #### macOS
+          - **Intel Mac**: `keynginx-${{ steps.version.outputs.VERSION }}-darwin-amd64.tar.gz`
+          - **Apple Silicon**: `keynginx-${{ steps.version.outputs.VERSION }}-darwin-arm64.tar.gz`
+          
+          #### Linux
+          - **Debian/Ubuntu**: `keynginx-${{ steps.version.outputs.VERSION }}-amd64.deb`
+          - **Linux 64-bit**: `keynginx-${{ steps.version.outputs.VERSION }}-linux-amd64.tar.gz`
+          - **Linux ARM64**: `keynginx-${{ steps.version.outputs.VERSION }}-linux-arm64.tar.gz`
+          
+          ### Installation
+          
+          #### Quick Install (Linux/macOS)
+          ```bash
+          curl -fsSL https://github.com/sinhaparth5/keynginx/releases/download/${{ steps.version.outputs.VERSION }}/install.sh | sh
+          ```
+          
+          #### Manual Install
+          1. Download the appropriate package for your platform
+          2. Extract the archive
+          3. Run the install script or copy the binary to your PATH
+          
+          ### What's New
+          - SSL certificate generation with proper SAN support
+          - Production-ready Nginx configurations
+          - Complete Docker container lifecycle management
+          - Multi-service reverse proxy support
+          - Real-time monitoring and logging
+          
+          ### Verification
+          All packages include SHA256 checksums in `checksums.txt`
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Assets
+      run: |
+        # Upload all files in release directory
+        for file in release/*; do
+          if [ -f "$file" ]; then
+            echo "Uploading $file"
+            curl \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"$file" \
+              "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=$(basename $file)"
+          fi
+        done
+
+  # Build macOS DMG (requires macOS runner)
+  build-macos-dmg:
+    runs-on: macos-latest
+    needs: build-and-release
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Build macOS binary
+      run: |
+        export VERSION=${GITHUB_REF#refs/tags/}
+        make build
+        GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w -X github.com/sinhaparth5/keynginx/cmd.Version=${VERSION}" -o keynginx ./main.go
+
+    - name: Create DMG
+      run: |
+        # Create app bundle structure
+        mkdir -p KeyNginx.app/Contents/MacOS
+        mkdir -p KeyNginx.app/Contents/Resources
+        
+        # Copy binary
+        cp keynginx KeyNginx.app/Contents/MacOS/
+        
+        # Create Info.plist
+        cat > KeyNginx.app/Contents/Info.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>CFBundleExecutable</key>
+          <string>keynginx</string>
+          <key>CFBundleIdentifier</key>
+          <string>dev.keynginx.cli</string>
+          <key>CFBundleName</key>
+          <string>KeyNginx</string>
+          <key>CFBundleVersion</key>
+          <string>${GITHUB_REF#refs/tags/}</string>
+          <key>CFBundleShortVersionString</key>
+          <string>${GITHUB_REF#refs/tags/}</string>
+        </dict>
+        </plist>
+        EOF
+        
+        # Create DMG
+        hdiutil create -srcfolder KeyNginx.app -volname "KeyNginx" -format UDZO KeyNginx-${GITHUB_REF#refs/tags/}.dmg
+
+    - name: Upload DMG
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.build-and-release.outputs.upload_url }}
+        asset_path: ./KeyNginx-${{ github.ref_name }}.dmg
+        asset_name: KeyNginx-${{ github.ref_name }}.dmg
+        asset_content_type: application/octet-stream
