@@ -99,7 +99,7 @@ graph TD
 ### Build from Source
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/keynginx
+git clone https://github.com/sinhaparth5/keynginx
 cd keynginx
 
 # Install dependencies
@@ -524,7 +524,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 6. Submit a pull request
 
 ### Reporting Issues
-Please use the [GitHub issue tracker](https://github.com/yourusername/keynginx/issues) to report bugs or request features.
+Please use the [GitHub issue tracker](https://github.com/sinhaparth5/keynginx/issues) to report bugs or request features.
 
 ## Roadmap
 
@@ -576,8 +576,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Quick Links
 
-- 📚 [Documentation](https://github.com/yourusername/keynginx/wiki)
-- 🐛 [Issues](https://github.com/yourusername/keynginx/issues)
-- 💬 [Discussions](https://github.com/yourusername/keynginx/discussions)
-- 🚀 [Releases](https://github.com/yourusername/keynginx/releases)
-- 🏗️ [Examples](https://github.com/yourusername/keynginx/tree/main/examples)
+- 📚 [Documentation](https://github.com/sinhaparth5/keynginx/wiki)
+- 🐛 [Issues](https://github.com/sinhaparth5/keynginx/issues)
+- 💬 [Discussions](https://github.com/sinhaparth5/keynginx/discussions)
+- 🚀 [Releases](https://github.com/sinhaparth5/keynginx/releases)
+- 🏗️ [Examples](https://github.com/sinhaparth5/keynginx/tree/main/examples)
