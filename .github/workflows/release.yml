@@ -11,6 +11,9 @@ on:
         required: true
         default: 'v1.0.0'
 
+permissions:
+  contents: write  # This is the key fix!
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
@@ -33,6 +36,13 @@ jobs:
           echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
         fi
 
+    - name: Set clean version
+      id: clean_version
+      run: |
+        VERSION=${{ steps.version.outputs.VERSION }}
+        CLEAN_VERSION=$(echo $VERSION | sed 's/^v//')
+        echo "CLEAN_VERSION=$CLEAN_VERSION" >> $GITHUB_OUTPUT
+
     - name: Install build dependencies
       run: |
         sudo apt-get update
@@ -54,13 +64,10 @@ jobs:
         make release
 
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ steps.version.outputs.VERSION }}
-        release_name: KeyNginx ${{ steps.version.outputs.VERSION }}
+        name: KeyNginx ${{ steps.version.outputs.VERSION }}
         body: |
           ## KeyNginx ${{ steps.version.outputs.VERSION }}
           
@@ -69,17 +76,17 @@ jobs:
           ### Download Options
           
           #### Windows
-          - **Windows 64-bit**: `keynginx-${{ steps.version.outputs.VERSION }}-windows-amd64.zip`
-          - **Windows 32-bit**: `keynginx-${{ steps.version.outputs.VERSION }}-windows-386.zip`
+          - **Windows 64-bit**: `keynginx-${{ steps.clean_version.outputs.CLEAN_VERSION }}-windows-amd64.zip`
+          - **Windows 32-bit**: `keynginx-${{ steps.clean_version.outputs.CLEAN_VERSION }}-windows-386.zip`
           
           #### macOS
-          - **Intel Mac**: `keynginx-${{ steps.version.outputs.VERSION }}-darwin-amd64.tar.gz`
-          - **Apple Silicon**: `keynginx-${{ steps.version.outputs.VERSION }}-darwin-arm64.tar.gz`
+          - **Intel Mac**: `keynginx-${{ steps.clean_version.outputs.CLEAN_VERSION }}-darwin-amd64.tar.gz`
+          - **Apple Silicon**: `keynginx-${{ steps.clean_version.outputs.CLEAN_VERSION }}-darwin-arm64.tar.gz`
           
           #### Linux
-          - **Debian/Ubuntu**: `keynginx-${{ steps.version.outputs.VERSION }}-amd64.deb`
-          - **Linux 64-bit**: `keynginx-${{ steps.version.outputs.VERSION }}-linux-amd64.tar.gz`
-          - **Linux ARM64**: `keynginx-${{ steps.version.outputs.VERSION }}-linux-arm64.tar.gz`
+          - **Debian/Ubuntu**: `keynginx-${{ steps.clean_version.outputs.CLEAN_VERSION }}-amd64.deb`
+          - **Linux 64-bit**: `keynginx-${{ steps.clean_version.outputs.CLEAN_VERSION }}-linux-amd64.tar.gz`
+          - **Linux ARM64**: `keynginx-${{ steps.clean_version.outputs.CLEAN_VERSION }}-linux-arm64.tar.gz`
           
           ### Installation
           
@@ -102,79 +109,15 @@ jobs:
           
           ### Verification
           All packages include SHA256 checksums in `checksums.txt`
+          
+          ### System Requirements
+          - Docker Desktop (Windows/macOS) or Docker Engine (Linux)
+          - Available ports: 8443 (HTTPS), 8080 (HTTP)
+          
+          ---
+          
+          **Built with ❤️ in Go** | **Powered by Nginx & Docker**
+        files: release/*
         draft: false
         prerelease: false
-
-    - name: Upload Release Assets
-      run: |
-        # Upload all files in release directory
-        for file in release/*; do
-          if [ -f "$file" ]; then
-            echo "Uploading $file"
-            curl \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Content-Type: application/octet-stream" \
-              --data-binary @"$file" \
-              "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ steps.create_release.outputs.id }}/assets?name=$(basename $file)"
-          fi
-        done
-
-  # Build macOS DMG (requires macOS runner)
-  build-macos-dmg:
-    runs-on: macos-latest
-    needs: build-and-release
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
-
-    - name: Build macOS binary
-      run: |
-        export VERSION=${GITHUB_REF#refs/tags/}
-        make build
-        GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w -X github.com/sinhaparth5/keynginx/cmd.Version=${VERSION}" -o keynginx ./main.go
-
-    - name: Create DMG
-      run: |
-        # Create app bundle structure
-        mkdir -p KeyNginx.app/Contents/MacOS
-        mkdir -p KeyNginx.app/Contents/Resources
-        
-        # Copy binary
-        cp keynginx KeyNginx.app/Contents/MacOS/
-        
-        # Create Info.plist
-        cat > KeyNginx.app/Contents/Info.plist << EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-          <key>CFBundleExecutable</key>
-          <string>keynginx</string>
-          <key>CFBundleIdentifier</key>
-          <string>dev.keynginx.cli</string>
-          <key>CFBundleName</key>
-          <string>KeyNginx</string>
-          <key>CFBundleVersion</key>
-          <string>${GITHUB_REF#refs/tags/}</string>
-          <key>CFBundleShortVersionString</key>
-          <string>${GITHUB_REF#refs/tags/}</string>
-        </dict>
-        </plist>
-        EOF
-        
-        # Create DMG
-        hdiutil create -srcfolder KeyNginx.app -volname "KeyNginx" -format UDZO KeyNginx-${GITHUB_REF#refs/tags/}.dmg
-
-    - name: Upload DMG
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.build-and-release.outputs.upload_url }}
-        asset_path: ./KeyNginx-${{ github.ref_name }}.dmg
-        asset_name: KeyNginx-${{ github.ref_name }}.dmg
-        asset_content_type: application/octet-stream
+        token: ${{ secrets.GITHUB_TOKEN }}
